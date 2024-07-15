@@ -1,0 +1,254 @@
+expression :	term | term + term | term − term
+term :		factor | factor * factor | factor / factor
+factor : 	number | ( expression ) | + factor | − factor
+
+
+
+
+Pseudo: 
+
+function Expression: float;
+  begin
+  result := Term;
+  while Tokenizer.TokenType in [ttPlus, ttMinus] then begin
+     if Tokenizer.TokenType = ttPlus then begin
+       Tokenizer.NextTrueToken;
+       result := result + Term;
+     end
+     else begin // TokenType = ttMinus
+       Tokenizer.NextTrueToken;
+       result := result - Term;
+     end
+  end;
+end;
+
+function Term: float;
+  begin
+  result := Factor;
+  repeat
+    if Tokenizer.TokenType = ttMult then begin
+      Tokenizer.NextTrueToken;
+      result := result * Factor;
+    end
+    else if Tokenizer.TokenType = ttDiv then begin
+      Tokenizer.NextTrueToken;
+      result := result / Factor;
+    end
+    else
+      exit;
+  until false;
+end;
+
+function Factor: float;
+// uses itself and Expression already declared and defined
+begin
+  result := 0;
+  if Tokenizer.TokenType = ttNumber then begin
+    result := StrToNumber(Tokenizer.Token);
+    Tokenizer.NextTrueToken;
+  end
+  else if Tokenizer.TokenType = ttPlus then begin
+    Tokenizer.NextTrueToken;  // skip and ignore leading '+'
+    result := Factor;
+  end
+  else if Tokenizer.TokenType = ttMinus then begin
+    Tokenizer.NextTrueToken;  // skip '-'
+    result := - Factor;       // unary -
+  end
+  else if Tokenizer.TokenType = ttLeftParenthesis then begin
+    Tokenizer.NextTrueToken;  // skip '('
+    result := Expression;
+    if Tokenizer.TokenType <> ttRightParenthesis then begin
+      RaiseParseException(peExpectedRightPar);
+    end;
+    Tokenizer.NextTrueToken; // skip ')'
+  end
+  else if Tokenizer.TokenType = ttEOS then
+    RaiseParseException(peUnexpectedEOS)
+  else
+    RaiseParseException(peUnexpectedElement);
+end;
+
+
+A B -> A AND B value contains both in a and b 
+A U B -> A OR B value either in a or b 
+
+Generative grammar (Vn, Vt, R, S) -> nonterminals , terminals,  the rules and the start symbol
+
+Vn = {Name, Sentence, List, End}
+Vt = {tom, dick, harry, COMMA, and }
+
+Vn intersection Vt must be empty (non terminals and terminal may not have a symbol in common)
+
+R is the set of all rules of pairs (P,Q) , where P -> left-hand side and Q -> right-hand side 
+
+P -> consist of one or more non-termianls and terminals  ( P belongs Union of Vn and Vt )+ 
+Q -> consist of zero or more non-terminals and terminals ( P belongs Union of Vn and Vt )*
+
+For our grammar: 
+
+R = {(Name, tom), (Name, dick), (Name, harry), (Sentence, Name), (Sentence, List End), (List, Name), (List, List , Name), (, Name End, and Name)}  -> This is what is called phase structure grammar
+
+Start Symbol Sn must be an element of Vn that is it must a non-terminal: S = Sentence
+
+Another way: 
+
+0. Name -> tom | dick | harry 
+1. Sentence^start -> Name | List End 
+2. List -> Name | Name, List 
+3. , Name End -> and Name 
+
+Example: tom, dick and harry
+
+1. Start symbol sentence 
+2. List End  (Rule: Sentence -> List End ) rule 1 
+3. Name , List End ( List -> Name, List ) rule 2 
+4. Name, Name, List End ( List -> Name, List ) rule 2
+5. Name, Name, Name End ( List -> Name ) rule 2
+6. Name, Name and Name  ( , Name End -> and Name ) rule 3
+7. tom, dick and harry rule 0, three times 
+
+
+Chomsky hierarchy 
+
+Type 0 grammar (Recursively Enumerable Grammars) -> may contain rules that transform an arbitrary (non-zero) number of symbols into an arbitrary (possbly zero) number of symbols. Example 
+
+, N E -> and N  (three symbols replaced by 2 )
+
+Example (Type 0 Grammar):
+
+
+S -> aSB
+S -> ab 
+B -> b 
+
+This grammar generates a language of strings with equal number of a's followed by b's 
+
+Explanation: 
+Starting with S, you can product aSB 
+From aSB, you can replace S with aSB again or ab. 
+Finally replace B with b, ensuring an equal number of a's and b's .
+
+Type 1 grammar ( Context-sensitive grammar )
+
+A grammar is Type 1 monotonic if it contains no rules in which the left hand side consists of more symbols that the right hand side.  Forbids for instance N E -> and N. 
+A grammar is Type 1 context-sensitive if all of its rules are context-sensitive. context-sensitive if actually one (non-terminal) symbol in the left-hand side gets replaced by other symbols, while others are undamaged
+
+αAβ→αγβ 
+
+A is a non terminal symbol (an element of N )
+a and B are strings of terminal and non-terminal symbols (elements of (N U E)* )
+y is a non empty string of terminal and non-terminal symbols (elements of (N U E)+ )
+
+symbols a and b remains unchanged only non terminal A is replaced by y 
+the string y is non empty meaning it contains at least one symbol (terminal or non-terminal). This ensure that length of string on the right-hand side is at least as long as the left hand side
+
+Example of context sensitive: 
+Name Comma Name End -> Name and Name End (only 1 rule applied in the left context)
+
+Type 2 grammar (Context Free grammar )
+
+A→γ
+A is a single non-terminal symbol an element of N  (each production rule has exactly one non-terminal on the left hand side. )
+γ is a string of terminal and non-terminal symbols an element of (N U E)*  (can be any string of terminal or non-termianl symbol including the empty string )   
+
+Example: 
+
+
+S-> Non termnal
+Termianl -> (,) 
+Start -> S 
+Production: S→SS∣(S∣ϵ) 
+
+
+Type 3 grammar ( Regular grammar )
+
+A non terminal produces one terminal
+A non terminal produces one terminal followed by one non terminal 
+
+A -> aB or A -> a 
+where A and B are non-terminal symbols (elements of N), and a is a terminal symbol (element of Non terminal symbols)
+
+Example: 
+
+Non-terminals -> S,A 
+Terminals -> 0,1 
+Start Symbol -> S 
+Production rules -> 
+
+	S -> OS | 1A 
+	A -> 0A | 1A | e 
+
+Type 4 grammar ( Finite choice grammar ) no non terminal is allowed in the right hand side. 
+
+Each production rule produces a terminal string directly.
+Right hand side consist solely of terminal symbols
+
+1. Production Rule: The form of the production rules is: A -> a  A is a non terminal symbol, and a is a string of terminal symbols. 
+
+Example: 
+
+	S -> ab 
+	S -> ba 
+	S -> aa 
+
+1. Initialize the queue 
+2. Process the queue 
+	Dequeue the first sentinel form from the queue. 
+	Scan the sentential form from left to right , looking for non-terminal symbols 
+	For each non-terminal found, apply each production rule that has the non-terminal on the left-hand side, creating the new sentential forms. 
+	Add these new sentential forms to the end of the queue. 
+	If the original sentential form contains only terminal symbols, write it down as a sentence in the language 
+	Discard the processed sentential form. 
+
+Example: S -> aSb | ab 
+
+The language generated by this grammar consists of strings with equal number of a's and b's 
+
+Initial Setup: Queue: [S]
+
+Iteration 1:	
+	Dequeue: S
+ 	Apply production to S: 
+		S-> aSb gives aSb
+		S -> ab gives ab 
+	Queue: [aSb, ab]
+
+Iteration 2:
+	Dequeue: aSb
+	Apply productions to S:
+		S -> aSb gives aaSbb 
+		S -> ab gives aabb
+Queue: [ab, aaSbb, aabb]
+
+Iteration 3:
+	Dequeue: ab 
+	No non-terminals present, so ab is valid sentence.
+	Write down: ab 
+	Queue: [aaSbb, aabb]
+
+Iteration 4: 
+	Dequeu: aaSbb
+	Apply productions to S: 
+		S -> aSb gives aaaSbbb
+		S -> ab gives aaabbb
+	Queue: [aabb, aaaSbbb, aaabbb]	
+
+and so on 
+Valid sentences generated: ab aabb aaabbb aaaabbbb ...
+
+
+Cyk algorithm: 
+
+Requirements: The grammar must be in CNF (Chomsky Normal Form) 
+
+A -> BC (where A,B and C are non-terminal symbols)
+A -> a (where A is a non-terminal and a is a terminal)
+
+Steps: 
+
+1. Create a table P where P[i,j] is the set of non-terminals that can generate substring s[i:j]
+2. 
+Base case: For each substring of length 1 (i.e single characters), fill in the table using the production rules of the form A -> a.
+Recurive case: For each substring of length > 1, consider all ways to split the substring into two parts. For each split, if there are production rules of the form A -> BC, and 'B' generates the first part and C generates the second part, then A can generate the entire substring
+3. After filling in the table, check if the start symbol of the grammar can generate the first part of the entire string (i.e if the start symbol is in `P[0, n-1] where n is the length of the input string.`)
